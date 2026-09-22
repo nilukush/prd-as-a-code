@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node prdc.js",
     "test": "vitest run",
-    "demo": "node prdc.js validate sample/ && node prdc.js lint sample/ && node prdc.js build html sample/ --out ./_demo-out && node prdc.js diff sample/ --baseline 1 --target 2"
+    "demo": "node prdc.js validate sample/checkout-redesign && node prdc.js lint sample/checkout-redesign && node prdc.js build html sample/checkout-redesign --out ./_demo-out/checkout.html && node prdc.js diff sample/checkout-redesign --baseline 1 --target 2 && node prdc.js graph sample/"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

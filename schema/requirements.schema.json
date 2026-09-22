@@ -8,7 +8,7 @@
     "type": "object",
     "required": ["id", "acceptance_criteria"],
     "properties": {
-      "id": { "minLength": 1 },
+      "id": { "type": "string", "minLength": 1 },
       "acceptance_criteria": {
         "type": "array",
         "items": { "type": "string" },

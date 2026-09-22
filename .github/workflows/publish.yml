@@ -24,5 +24,8 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - run: npm ci
       - run: npm test
-      # Trusted publishing needs npm >= 11.5; Node 24 bundles npm 11.x.
-      - run: npm publish
+      # stage publish needs a recent npm; runners can bundle an older one.
+      - run: npm install -g npm@latest
+      # Stages the version for 2FA maintainer approval on npmjs.com instead of
+      # publishing directly (the trusted publisher has no "allow npm publish").
+      - run: npm stage publish

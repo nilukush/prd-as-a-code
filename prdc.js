@@ -79,6 +79,9 @@ function metaSchemaErrors(meta) {
       if (prop === 'id') out.push('meta.id is required (e.g. PRD-1042)');
       else if (prop === 'title') out.push('meta.title is required');
       else if (prop === 'owner') out.push('meta.owner is required');
+    } else if (e.keyword === 'type' && /^\/(id|title|owner)$/.test(e.instancePath)) {
+      const prop = e.instancePath.slice(1);
+      out.push(`meta.${prop} must be a string`);
     } else if (e.keyword === 'minItems' || e.keyword === 'type') {
       // Remaining type/minItems errors can only come from the approval-gate
       // branches of the schema's allOf.
@@ -103,6 +106,8 @@ function reqsSchemaErrors(reqs) {
       out.push('requirement missing id — every FR/NFR needs a stable id like FR-01');
     else if (e.keyword === 'minLength' && e.instancePath.endsWith('/id'))
       out.push('requirement missing id — every FR/NFR needs a stable id like FR-01');
+    else if (e.keyword === 'type' && e.instancePath.endsWith('/id'))
+      out.push('requirement id must be a string');
     else if (
       (e.keyword === 'required' && e.params.missingProperty === 'acceptance_criteria') ||
       e.keyword === 'minItems' ||
@@ -126,6 +131,8 @@ function metricsSchemaErrors(metrics) {
       (e.keyword === 'minLength' && e.instancePath.endsWith('/name'))
     )
       out.push('metric missing name');
+    else if (e.keyword === 'type' && e.instancePath.endsWith('/name'))
+      out.push('metric name must be a string');
   }
   return out;
 }

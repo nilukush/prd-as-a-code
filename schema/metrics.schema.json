@@ -8,7 +8,7 @@
     "type": "object",
     "required": ["name"],
     "properties": {
-      "name": { "minLength": 1 },
+      "name": { "type": "string", "minLength": 1 },
       "baseline": true,
       "target": true,
       "window": true,

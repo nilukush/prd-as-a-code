@@ -6,9 +6,9 @@
   "type": "object",
   "required": ["id", "title", "owner", "status"],
   "properties": {
-    "id": { "minLength": 1 },
-    "title": { "minLength": 1 },
-    "owner": { "minLength": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1 },
     "status": {
       "enum": ["draft", "review", "approved", "shipped", "archived"]
     },

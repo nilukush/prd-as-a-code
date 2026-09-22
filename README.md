@@ -11,7 +11,16 @@ compiled deterministically to every format your stakeholders need.
 ## Install
 
 ```bash
-git clone <repo>
+npm install -g prd-as-code
+prdc --help
+```
+
+Or run it once without installing: `npx -p prd-as-code prdc --help`
+
+Or work from source:
+
+```bash
+git clone https://github.com/nilukush/prd-as-a-code
 cd prd-as-a-code
 npm install
 node prdc.js --help

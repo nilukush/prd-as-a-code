@@ -1,6 +1,6 @@
 {
   "name": "prd-as-code",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "PRD-as-Code CLI: treat product specs like software",
   "type": "module",
   "bin": {

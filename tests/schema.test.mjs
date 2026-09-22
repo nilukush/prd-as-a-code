@@ -141,6 +141,29 @@ describe('metrics schema contract', () => {
 });
 
 describe('CLI validate stays message-compatible with the schemas', () => {
+  it('never leaks Ajv strict-mode warnings to stderr', () => {
+    const dir = makePrd({ 'meta.yaml': VALID_META, 'requirements.yaml': VALID_REQS });
+    const r = runPrdc(['validate', dir]);
+    expect(r.status).toBe(0);
+    expect(r.stderr).not.toContain('strict mode');
+    cleanup(dir);
+  });
+
+  it('rejects a non-string id with a clear message', () => {
+    const dir = makePrd({
+      'meta.yaml': `id: 123
+title: Numeric Id
+status: draft
+owner: tester@team
+`,
+      'requirements.yaml': VALID_REQS,
+    });
+    const r = runPrdc(['validate', dir]);
+    expect(r.status).toBe(1);
+    expect(r.output).toContain('meta.id must be a string');
+    cleanup(dir);
+  });
+
   it('reports the enum rejection with the exact historical message', () => {
     const dir = makePrd({
       'meta.yaml': `id: PRD-9004

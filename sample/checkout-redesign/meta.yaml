@@ -1,0 +1,10 @@
+id: PRD-1042
+title: Checkout Redesign — One-Tap Returning Shopper
+status: approved
+owner: alice@product
+stakeholders: [payments, growth, design, legal]
+target_release: 2026-Q2
+depends_on: [PRD-1019]   # PRD-1019 = Vault Tokenization (sibling)
+reviewers: [bob@product, carol@engineering]
+approved_by: [bob@product, carol@engineering]
+signed_at: 2026-01-14

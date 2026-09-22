@@ -1,0 +1,51 @@
+- id: FR-01
+  as_a: returning shopper
+  i_want: my saved card to appear pre-selected at checkout
+  so_that: I can complete purchase in a single tap
+  priority: P0
+  acceptance_criteria:
+    - returning shopper sees saved card pre-selected within 200ms of checkout render
+    - shopper can complete purchase with 1 tap after biometric unlock
+    - card token persists for 365 days from last successful charge
+  rollback_plan: feature-flag `checkout.preselect_v2` rolls back to current 3-step flow within 60s
+  traces_to: [JIRA-8821, GHERKIN-12]
+
+- id: FR-02
+  as_a: first-time shopper
+  i_want: to save my card after a successful purchase
+  so_that: future checkouts are faster
+  priority: P1
+  acceptance_criteria:
+    - opt-in checkbox defaults to checked only in regions where regulation permits
+    - saved card appears in account settings within 5s of purchase completion
+  traces_to: [JIRA-8845]
+
+- id: FR-03
+  as_a: shopper
+  i_want: the checkout to stay responsive on slow connections
+  so_that: I do not abandon the cart
+  priority: P1
+  acceptance_criteria:
+    - first meaningful paint under 1.2s on 3G fast profile (Lighthouse)
+    - checkout interactive under 2.5s on 3G fast profile
+  traces_to: [JIRA-8847, PERF-3]
+
+- id: NFR-01
+  as_a: security engineer
+  i_want: PCI scope limited to the vault service
+  so_that: the checkout frontend never touches raw PAN
+  priority: P0
+  acceptance_criteria:
+    - no raw PAN traverses frontend JS bundles (verified by static analysis in CI)
+    - vault token exchange uses mutual TLS
+  traces_to: [SEC-441]
+
+- id: NFR-02
+  as_a: legal reviewer
+  i_want: explicit consent capture for card storage
+  so_that: we comply with PSD2 SCA in EU and RBI mandate in India
+  priority: P0
+  acceptance_criteria:
+    - consent text localized per region (EU, IN, BR, US)
+    - consent timestamp and IP persisted with the token record
+  traces_to: [LEGAL-118]

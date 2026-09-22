@@ -1,0 +1,17 @@
+node_modules/
+_demo-out/
+_out/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+
+# IDE and local tool state
+.idea/
+.mimosa/
+.playwright-mcp/
+.DS_Store
+
+# project records and research artifacts stay local (not published)
+docs/

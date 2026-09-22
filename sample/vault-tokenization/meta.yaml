@@ -1,0 +1,10 @@
+id: PRD-1019
+title: Vault Tokenization — Foundation for Stored Payments
+status: shipped
+owner: carol@engineering
+stakeholders: [payments, security]
+target_release: 2025-Q4
+depends_on: []
+reviewers: [alice@product]
+approved_by: [alice@product]
+signed_at: 2025-09-22

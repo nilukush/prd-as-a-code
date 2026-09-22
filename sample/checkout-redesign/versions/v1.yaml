@@ -1,0 +1,29 @@
+# Synthetic baseline (v1) for demo purposes. In real usage, this would be
+# the requirements.yaml snapshot from when the PRD was first approved.
+- id: FR-01
+  as_a: returning shopper
+  i_want: my saved card to appear at checkout
+  so_that: I do not have to retype it
+  priority: P1
+  acceptance_criteria:
+    - returning shopper sees saved card at checkout
+    - card token persists for 180 days
+  traces_to: []
+
+- id: FR-02
+  as_a: first-time shopper
+  i_want: to save my card after purchase
+  so_that: future checkouts are faster
+  priority: P2
+  acceptance_criteria:
+    - opt-in checkbox present on payment step
+  traces_to: []
+
+- id: FR-03
+  as_a: shopper
+  i_want: the checkout to load
+  so_that: I can complete my purchase
+  priority: P2
+  acceptance_criteria:
+    - checkout renders under 3s on 4G
+  traces_to: []

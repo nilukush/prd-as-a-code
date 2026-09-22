@@ -1,0 +1,19 @@
+- id: FR-01
+  as_a: payments engineer
+  i_want: to exchange a raw PAN for a vault token via a single API call
+  so_that: downstream services never persist raw card numbers
+  priority: P0
+  acceptance_criteria:
+    - POST /v1/vault/tokens returns a token within 250ms p99
+    - token is bound to merchant_id and cannot be replayed cross-merchant
+  traces_to: [JIRA-8401]
+
+- id: NFR-01
+  as_a: security engineer
+  i_want: vault tokens to expire after 5 minutes unless charged
+  so_that: leaked tokens have negligible value
+  priority: P0
+  acceptance_criteria:
+    - token TTL enforced server-side at 300s
+    - expired token returns 410 Gone on charge attempt
+  traces_to: [SEC-402]

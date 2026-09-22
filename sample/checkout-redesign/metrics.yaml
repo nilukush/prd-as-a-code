@@ -1,0 +1,23 @@
+- name: checkout_conversion_rate
+  baseline: 0.62
+  target: 0.74
+  window: 30d
+  source: amplitude
+
+- name: time_to_purchase_p50
+  baseline: 38s
+  target: 12s
+  window: 30d
+  source: internal_rum
+
+- name: cart_abandonment_rate
+  baseline: 0.31
+  target: 0.20
+  window: 30d
+  source: amplitude
+
+- name: payment_failure_rate
+  baseline: 0.04
+  target: 0.02
+  window: 30d
+  source: payments_service

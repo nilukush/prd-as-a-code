@@ -148,8 +148,7 @@ function ambiguousWordsIn(lowerText) {
 
 function lintPrd(prdDir) {
   const warnings = [];
-  const spec = readText(join(prdDir, 'spec.md'));
-  const reqs = readYaml(join(prdDir, 'requirements.yaml')) || [];
+  const { spec, reqs } = loadPrd(prdDir);
 
   // ambiguous words in spec
   for (const { word, index } of ambiguousWordsIn(spec.toLowerCase())) {
@@ -194,25 +193,53 @@ function escapeHtml(v) {
     .replaceAll("'", '&#39;');
 }
 
+// Load the four typed files of a PRD directory in one pass so every
+// command shares the same read semantics.
+function loadPrd(prdDir) {
+  return {
+    meta: readYaml(join(prdDir, 'meta.yaml')),
+    reqs: readYaml(join(prdDir, 'requirements.yaml')) ?? [],
+    metrics: readYaml(join(prdDir, 'metrics.yaml')) ?? [],
+    spec: readText(join(prdDir, 'spec.md')),
+  };
+}
+
+function requireMeta(meta) {
+  if (!meta) {
+    err('missing meta.yaml — every PRD must declare id, title, owner, status');
+    process.exit(1);
+  }
+}
+
+// User-story sentence from whichever parts exist; empty string when none do.
+function storySentence(r, bold) {
+  const parts = [];
+  if (r.as_a) parts.push(`As a ${bold(r.as_a)}`);
+  if (r.i_want) parts.push(`I want ${bold(r.i_want)}`);
+  if (r.so_that) parts.push(`so that ${bold(r.so_that)}`);
+  return parts.length ? `${parts.join(', ')}.` : '';
+}
+
 function buildHtml(prdDir, outPath) {
-  const meta = readYaml(join(prdDir, 'meta.yaml'));
-  const reqs = readYaml(join(prdDir, 'requirements.yaml')) || [];
-  const metrics = readYaml(join(prdDir, 'metrics.yaml')) || [];
-  const spec = readText(join(prdDir, 'spec.md'));
+  const { meta, reqs, metrics, spec } = loadPrd(prdDir);
+  requireMeta(meta);
 
   const specHtml = marked.parse(spec);
 
-  const reqsHtml = reqs.map(r => `
+  const reqsHtml = reqs.map(r => {
+    const story = storySentence(r, s => `<b>${escapeHtml(s)}</b>`);
+    return `
     <article class="req">
       <header>
         <span class="id">${escapeHtml(r.id)}</span>
         <span class="prio">${escapeHtml(r.priority || '—')}</span>
         <h3>${escapeHtml(r.i_want || r.title || r.id)}</h3>
       </header>
-      <p class="story">As a <b>${escapeHtml(r.as_a)}</b>, I want <b>${escapeHtml(r.i_want)}</b>, so that <b>${escapeHtml(r.so_that)}</b>.</p>
+      ${story ? `<p class="story">${story}</p>` : ''}
       <ul>${(r.acceptance_criteria || []).map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>
       ${r.traces_to ? `<p class="trace">traces: ${escapeHtml(r.traces_to.join(', '))}</p>` : ''}
-    </article>`).join('');
+    </article>`;
+  }).join('');
 
   const metricsHtml = metrics.map(m => `
     <tr>
@@ -284,10 +311,8 @@ function buildHtml(prdDir, outPath) {
 }
 
 function buildMarkdown(prdDir, outPath) {
-  const meta = readYaml(join(prdDir, 'meta.yaml'));
-  const reqs = readYaml(join(prdDir, 'requirements.yaml')) || [];
-  const metrics = readYaml(join(prdDir, 'metrics.yaml')) || [];
-  const spec = readText(join(prdDir, 'spec.md'));
+  const { meta, reqs, metrics, spec } = loadPrd(prdDir);
+  requireMeta(meta);
 
   let md = `# ${meta.title}\n\n`;
   md += `**${meta.id}** · status: **${meta.status}** · owner: **${meta.owner}**\n\n`;
@@ -296,8 +321,9 @@ function buildMarkdown(prdDir, outPath) {
   md += `---\n\n## Specification\n\n${spec}\n\n`;
   md += `## Requirements (${reqs.length})\n\n`;
   for (const r of reqs) {
-    md += `### ${r.id} — ${r.priority || ''}\n\n`;
-    md += `**As a** ${r.as_a}, **I want** ${r.i_want}, **so that** ${r.so_that}.\n\n`;
+    md += `### ${r.id}${r.priority ? ` — ${r.priority}` : ''}\n\n`;
+    const story = storySentence(r, s => `**${s}**`);
+    if (story) md += `${story}\n\n`;
     md += `**Acceptance criteria:**\n`;
     for (const ac of r.acceptance_criteria || []) md += `- ${ac}\n`;
     if (r.traces_to) md += `\n**Traces to:** ${r.traces_to.join(', ')}\n`;

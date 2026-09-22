@@ -11,7 +11,8 @@ npm install
 npm test
 ```
 
-Requirements: Node.js 18 or newer.
+Requirements: Node.js 18 or newer to run the CLI. Node.js 20.12 or newer to
+develop and run the test suite (Vitest 5 requires it).
 
 ## How to contribute
 

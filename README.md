@@ -33,7 +33,7 @@ prdc graph <root>                 # dependency graph across all PRDs
 
 ```bash
 node prdc.js validate sample/checkout-redesign   # passes with 2 warnings
-node prdc.js lint sample/checkout-redesign       # flags ambiguous wording
+node prdc.js lint sample/checkout-redesign       # passes clean
 node prdc.js build html sample/checkout-redesign --out ./out/checkout.html
 node prdc.js diff sample/checkout-redesign --baseline 1 --target 2
 node prdc.js graph sample/
@@ -93,7 +93,9 @@ Exit codes are CI-friendly: errors exit 1, warnings alone exit 0.
 
 Flags ambiguous words ("fast", "simple", "seamless", "robust", "scalable"),
 passive voice in acceptance criteria, and other prose quality issues that
-make PRDs hard to verify.
+make PRDs hard to verify. Established technical terms (the Lighthouse
+"3G fast" network profile) are exempt, since that "fast" is a name, not
+vagueness.
 
 ## Roadmap
 

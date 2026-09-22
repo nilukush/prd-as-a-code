@@ -181,6 +181,19 @@ function lintPrd(prdDir) {
 
 // ---------- builder ----------
 
+// All YAML-derived values are untrusted input (they can arrive via importers
+// or copy-paste) and must be escaped before interpolation into HTML.
+// spec.md is the exception: it is git-reviewed authored content rendered
+// through marked, the same trust model as any repository README.
+function escapeHtml(v) {
+  return String(v ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function buildHtml(prdDir, outPath) {
   const meta = readYaml(join(prdDir, 'meta.yaml'));
   const reqs = readYaml(join(prdDir, 'requirements.yaml')) || [];
@@ -192,28 +205,28 @@ function buildHtml(prdDir, outPath) {
   const reqsHtml = reqs.map(r => `
     <article class="req">
       <header>
-        <span class="id">${r.id}</span>
-        <span class="prio">${r.priority || '—'}</span>
-        <h3>${r.i_want || r.title || r.id}</h3>
+        <span class="id">${escapeHtml(r.id)}</span>
+        <span class="prio">${escapeHtml(r.priority || '—')}</span>
+        <h3>${escapeHtml(r.i_want || r.title || r.id)}</h3>
       </header>
-      <p class="story">As a <b>${r.as_a}</b>, I want <b>${r.i_want}</b>, so that <b>${r.so_that}</b>.</p>
-      <ul>${(r.acceptance_criteria || []).map(a => `<li>${a}</li>`).join('')}</ul>
-      ${r.traces_to ? `<p class="trace">traces: ${r.traces_to.join(', ')}</p>` : ''}
+      <p class="story">As a <b>${escapeHtml(r.as_a)}</b>, I want <b>${escapeHtml(r.i_want)}</b>, so that <b>${escapeHtml(r.so_that)}</b>.</p>
+      <ul>${(r.acceptance_criteria || []).map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>
+      ${r.traces_to ? `<p class="trace">traces: ${escapeHtml(r.traces_to.join(', '))}</p>` : ''}
     </article>`).join('');
 
   const metricsHtml = metrics.map(m => `
     <tr>
-      <td>${m.name}</td>
-      <td>${m.baseline ?? '—'}</td>
-      <td>${m.target ?? '—'}</td>
-      <td>${m.window || '—'}</td>
+      <td>${escapeHtml(m.name)}</td>
+      <td>${escapeHtml(m.baseline ?? '—')}</td>
+      <td>${escapeHtml(m.target ?? '—')}</td>
+      <td>${escapeHtml(m.window || '—')}</td>
     </tr>`).join('');
 
   const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${meta.title} — ${meta.id}</title>
+<title>${escapeHtml(meta.title)} — ${escapeHtml(meta.id)}</title>
 <style>
   :root { --bg:#0B0E14; --panel:#11151F; --ink:#E8EBF1; --muted:#8A93A6; --accent:#7C5CFF; --line:#1F2430; }
   * { box-sizing: border-box; }
@@ -246,11 +259,11 @@ function buildHtml(prdDir, outPath) {
 </style>
 </head>
 <body>
-  <h1>${meta.title}</h1>
+  <h1>${escapeHtml(meta.title)}</h1>
   <div class="meta">
-    <b>${meta.id}</b> · status: <b>${meta.status}</b> · owner: <b>${meta.owner}</b>
-    ${meta.target_release ? ` · target: <b>${meta.target_release}</b>` : ''}
-    ${meta.stakeholders ? ` · stakeholders: ${meta.stakeholders.join(', ')}` : ''}
+    <b>${escapeHtml(meta.id)}</b> · status: <b>${escapeHtml(meta.status)}</b> · owner: <b>${escapeHtml(meta.owner)}</b>
+    ${meta.target_release ? ` · target: <b>${escapeHtml(meta.target_release)}</b>` : ''}
+    ${meta.stakeholders ? ` · stakeholders: ${escapeHtml(meta.stakeholders.join(', '))}` : ''}
   </div>
 
   <h2>Specification</h2>

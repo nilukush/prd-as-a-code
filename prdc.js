@@ -470,7 +470,6 @@ What we're explicitly NOT doing in this PRD.
 function initProject(rootDir, name) {
   const target = name ? join(rootDir, name) : rootDir;
   mkdirSync(join(target, 'prds'), { recursive: true });
-  mkdirSync(join(target, 'prds', '_templates'), { recursive: true });
   write(join(target, '.prdrc.yaml'), `# PRD-as-Code project config
 schema_version: 1
 default_template: feature
@@ -484,11 +483,30 @@ build:
   ok('Initialized PRD project at', target);
 }
 
-function newPrd(rootDir, name, template = 'feature') {
+// Walk up from startDir until a .prdrc.yaml marks the project root.
+// Returns null outside any initialized project.
+function findProjectRoot(startDir) {
+  let cur = resolve(startDir);
+  for (;;) {
+    if (existsSync(join(cur, '.prdrc.yaml'))) return cur;
+    const parent = dirname(cur);
+    if (parent === cur) return null;
+    cur = parent;
+  }
+}
+
+function readPrdrc(rootDir) {
+  return readYaml(join(rootDir, '.prdrc.yaml')) ?? {};
+}
+
+function newPrd(startDir, name, templateArg) {
+  const root = findProjectRoot(startDir);
+  const cfg = root ? readPrdrc(root) : {};
+  const template = templateArg ?? cfg.default_template ?? 'feature';
   const tpl = TEMPLATES[template];
   if (!tpl) { err('unknown template:', template); process.exit(1); }
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const target = join(rootDir, 'prds', slug);
+  const target = join(root ?? startDir, 'prds', slug);
   mkdirSync(target, { recursive: true });
   for (const [file, content] of Object.entries(tpl)) {
     write(join(target, file), content);
@@ -542,7 +560,7 @@ switch (cmd) {
   case 'new': {
     const name = rest.find(a => !a.startsWith('--'));
     if (!name) { err('usage: prdc new <name>'); process.exit(1); }
-    newPrd(process.cwd(), name, opt('template', 'feature'));
+    newPrd(process.cwd(), name, opt('template'));
     break;
   }
   case 'validate': {

@@ -84,10 +84,10 @@ depends_on: [PRD-NOPE]
 });
 
 describe('lint', () => {
-  it('flags the ambiguous word in the checkout sample FR-03 and exits 1', () => {
+  it('passes clean on the checkout sample once 3G fast is exempted as a technical term', () => {
     const r = runPrdc(['lint', checkout]);
-    expect(r.status).toBe(1);
-    expect(r.stdout).toContain('FR-03: ambiguous word "fast" in so_that/AC');
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('lint clean');
   });
 
   it('flags passive voice in acceptance criteria', () => {

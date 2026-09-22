@@ -140,9 +140,22 @@ function validatePrd(prdDir) {
 // if this list ever grows beyond plain alphabetic terms.
 const AMBIGUOUS_RE = /\b(fast|quick|simple|easy|intuitive|seamless|robust|scalable|powerful|flexible|rich|modern|user-friendly|lightweight)\b/g;
 
+// Technical terms that would otherwise trip the ambiguous-word scan. The
+// Lighthouse network profiles are named "3G Fast"; that "fast" is a proper
+// noun, not vagueness. Keep this list short and justify every entry.
+const TECHNICAL_TERMS = ['3g fast'];
+
+function normalizeForLint(lowerText) {
+  let t = lowerText;
+  // Underscore, not hyphen: a hyphen still leaves a regex word boundary
+  // before the flagged word, an underscore does not.
+  for (const term of TECHNICAL_TERMS) t = t.replaceAll(term, term.replaceAll(' ', '_'));
+  return t;
+}
+
 function ambiguousWordsIn(lowerText) {
   const found = [];
-  for (const m of lowerText.matchAll(AMBIGUOUS_RE)) found.push({ word: m[1], index: m.index });
+  for (const m of normalizeForLint(lowerText).matchAll(AMBIGUOUS_RE)) found.push({ word: m[1], index: m.index });
   return found;
 }
 
@@ -155,15 +168,15 @@ function lintPrd(prdDir) {
     warnings.push(`ambiguous word "${word}" in spec.md at offset ${index} — replace with measurable language`);
   }
 
-  // ambiguous words in requirement so_that / acceptance_criteria
+  // ambiguous words anywhere in the user story (as_a / i_want / so_that) and ACs
   // (reported once per word per requirement, not once per occurrence)
   for (const r of reqs) {
-    const blob = `${r.so_that || ''} ${(r.acceptance_criteria || []).join(' ')}`.toLowerCase();
+    const blob = `${r.as_a || ''} ${r.i_want || ''} ${r.so_that || ''} ${(r.acceptance_criteria || []).join(' ')}`.toLowerCase();
     const seen = new Set();
     for (const { word } of ambiguousWordsIn(blob)) {
       if (seen.has(word)) continue;
       seen.add(word);
-      warnings.push(`${r.id}: ambiguous word "${word}" in so_that/AC — make it measurable`);
+      warnings.push(`${r.id}: ambiguous word "${word}" in user story/AC — make it measurable`);
     }
   }
 
@@ -565,7 +578,11 @@ const [, , cmd, ...rest] = process.argv;
 function opt(name, def) {
   const i = rest.indexOf(`--${name}`);
   if (i === -1) return def;
-  return rest[i + 1];
+  const v = rest[i + 1];
+  // A missing value or a following flag means the option was passed bare;
+  // fall back to the default so callers never see undefined paths.
+  if (v === undefined || v.startsWith('--')) return def;
+  return v;
 }
 
 function pathArg() {
@@ -617,6 +634,13 @@ switch (cmd) {
     const fmt = rest[0];
     const dir = rest[1] && !rest[1].startsWith('--') ? rest[1] : null;
     if (!fmt || !dir) { err('usage: prdc build <html|markdown> <dir> [--out path]'); process.exit(1); }
+    // A bare --out (no value) is rejected rather than silently building to
+    // the default path, because the user clearly intended a specific output.
+    const outIdx = rest.indexOf('--out');
+    if (outIdx !== -1 && (!rest[outIdx + 1] || rest[outIdx + 1].startsWith('--'))) {
+      err('usage: prdc build <html|markdown> <dir> [--out path]');
+      process.exit(1);
+    }
     const prdDir = resolve(dir);
     const out = opt('out', join(prdDir, `build.${fmt === 'html' ? 'html' : 'md'}`));
     let p;

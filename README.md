@@ -24,7 +24,7 @@ prdc init [name]                  # scaffold a new PRD project
 prdc new <name>                   # create a PRD from the feature template
 prdc validate <dir>               # schema validation (errors block ship)
 prdc lint <dir>                   # prose quality (ambiguous words, passive voice)
-prdc build <html|markdown> <dir>  # compile to a downstream artifact
+prdc build <html|markdown|gherkin> <dir>  # compile to a downstream artifact
 prdc snapshot <dir>               # freeze requirements.yaml as versions/vN.yaml
 prdc diff <dir> --baseline 1 --target 2   # semantic diff between versions
 prdc graph <root>                 # dependency graph across all PRDs
@@ -36,6 +36,7 @@ prdc graph <root>                 # dependency graph across all PRDs
 node prdc.js validate sample/checkout-redesign   # passes with 2 warnings
 node prdc.js lint sample/checkout-redesign       # passes clean
 node prdc.js build html sample/checkout-redesign --out ./out/checkout.html
+node prdc.js build gherkin sample/checkout-redesign --out ./out/checkout.feature
 node prdc.js diff sample/checkout-redesign --baseline 1 --target 2
 node prdc.js graph sample/
 ```
@@ -109,7 +110,6 @@ vagueness.
 - `prdc build pdf` - PDF export
 - `prdc build slides` - PPTX via PptxGenJS
 - `prdc build jira` - epics + stories from `requirements.yaml`
-- `prdc build gherkin` - `.feature` files from acceptance criteria
 - `prdc link <PRD-id> --to <JIRA-id>` - bidirectional traceability
 - `prdc release <PRD-id>` - locks version + emits changelog
 - AI critique mode (`prdc critique`) - schema-grounded review pass

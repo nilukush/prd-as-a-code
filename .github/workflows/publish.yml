@@ -1,0 +1,28 @@
+# Publishes prdc to the public npm registry using trusted publishing (OIDC).
+# No npm tokens exist anywhere in this repo: npmjs.com holds the trusted
+# publisher configuration bound to THIS file's name (publish.yml).
+# Under npm staged publishing the version may land in an approval queue;
+# a maintainer approves it on npmjs.com with 2FA before it goes live.
+name: publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required: lets this job request the OIDC token npm uses for authentication.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      - run: npm test
+      # Trusted publishing needs npm >= 11.5; Node 24 bundles npm 11.x.
+      - run: npm publish

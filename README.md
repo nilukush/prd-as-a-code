@@ -25,6 +25,7 @@ prdc new <name>                   # create a PRD from the feature template
 prdc validate <dir>               # schema validation (errors block ship)
 prdc lint <dir>                   # prose quality (ambiguous words, passive voice)
 prdc build <html|markdown> <dir>  # compile to a downstream artifact
+prdc snapshot <dir>               # freeze requirements.yaml as versions/vN.yaml
 prdc diff <dir> --baseline 1 --target 2   # semantic diff between versions
 prdc graph <root>                 # dependency graph across all PRDs
 ```
@@ -50,7 +51,7 @@ sample/checkout-redesign/
   requirements.yaml    # FR-xx / NFR-xx with stable IDs + acceptance criteria
   metrics.yaml         # baseline + target + measurement window
   spec.md              # narrative: context, approach, out-of-scope, risks
-  versions/            # snapshots for semantic diff (v1.yaml, v2.yaml, ...)
+  versions/            # snapshots for semantic diff (v1.yaml, v2.yaml, ...; use prdc snapshot)
 ```
 
 Every requirement gets a stable ID (`FR-01`, `NFR-02`). Downstream systems

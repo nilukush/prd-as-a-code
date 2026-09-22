@@ -426,6 +426,32 @@ function buildMarkdown(prdDir, outPath) {
   return outPath;
 }
 
+// ---------- snapshot ----------
+
+// Freeze the current requirements.yaml as the next numbered version file,
+// which is what `prdc diff` compares against. Next number is max existing
+// + 1, so gaps from manual edits never collide. Output is deterministic:
+// numbered copy plus one header comment, no timestamps.
+function snapshotPrd(prdDir) {
+  const reqsPath = join(prdDir, 'requirements.yaml');
+  if (!existsSync(reqsPath)) {
+    err('missing requirements.yaml: nothing to snapshot');
+    process.exit(1);
+  }
+  const vDir = join(prdDir, 'versions');
+  let next = 1;
+  if (existsSync(vDir)) {
+    const nums = readdirSync(vDir)
+      .map(f => /^v(\d+)\.yaml$/.exec(f))
+      .filter(Boolean)
+      .map(m => Number(m[1]));
+    if (nums.length) next = Math.max(...nums) + 1;
+  }
+  const content = readText(reqsPath);
+  write(join(vDir, `v${next}.yaml`), `# v${next} snapshot of requirements.yaml (prdc snapshot)\n${content}`);
+  ok(`snapshot v${next} -> versions/v${next}.yaml`);
+}
+
 // ---------- semantic diff ----------
 
 // Canonical serialization with sorted mapping keys: two requirement maps that
@@ -636,6 +662,7 @@ prdc — PRD-as-Code CLI
   prdc validate <dir>             schema validation
   prdc lint <dir>                 prose quality (ambiguous words, passive voice)
   prdc build <fmt> <dir> [--out]  compile to html | markdown
+  prdc snapshot <dir>             freeze requirements.yaml as versions/vN.yaml
   prdc diff <dir> [--baseline N --target N]   semantic diff between versions
   prdc graph <root>               dependency graph across all PRDs
 
@@ -724,6 +751,12 @@ switch (cmd) {
     else if (fmt === 'markdown' || fmt === 'md') p = buildMarkdown(prdDir, out);
     else { err('unknown format:', fmt); process.exit(1); }
     ok(`built ${fmt} -> ${p}`);
+    break;
+  }
+  case 'snapshot': {
+    const dir = pathArg();
+    if (!dir) { err('usage: prdc snapshot <dir>'); process.exit(1); }
+    snapshotPrd(resolve(dir));
     break;
   }
   case 'diff': {

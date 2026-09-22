@@ -339,9 +339,20 @@ function buildMarkdown(prdDir, outPath) {
 
 // ---------- semantic diff ----------
 
+// Canonical serialization with sorted mapping keys: two requirement maps that
+// differ only in YAML key order must compare equal.
+function canonical(v) {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') {
+    const keys = Object.keys(v).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+
 function diffPrd(prdDir, opts) {
-  // For demo: load baseline and target versions from a `versions/` subdir if present,
-  // else just summarize current state vs. previous (best-effort text diff of requirements).
+  // Load baseline and target versions from a `versions/` subdir if present,
+  // else fall back to a live snapshot listing of the current requirements.
   const vDir = join(prdDir, 'versions');
   const baseline = opts.baseline || 1;
   const target = opts.target || 2;
@@ -349,14 +360,25 @@ function diffPrd(prdDir, opts) {
   const bp = join(vDir, `v${baseline}.yaml`);
   const tp = join(vDir, `v${target}.yaml`);
 
-  if (!existsSync(bp) || !existsSync(tp)) {
-    // Fallback: diff against the live requirements.yaml + a synthetic baseline
-    log('(no versions/ dir found — running live snapshot diff)');
+  const liveSnapshot = (why) => {
+    log(why);
     const live = readYaml(join(prdDir, 'requirements.yaml')) || [];
     log(`Live PRD contains ${live.length} requirements:`);
     for (const r of live) {
       log(`  ${r.id}  [${r.priority || '—'}]  ${r.i_want}`);
     }
+  };
+
+  if (!existsSync(vDir)) {
+    liveSnapshot('(no versions/ dir found — running live snapshot diff)');
+    return;
+  }
+  if (!existsSync(bp) || !existsSync(tp)) {
+    const missing = [
+      !existsSync(bp) && `v${baseline}.yaml`,
+      !existsSync(tp) && `v${target}.yaml`,
+    ].filter(Boolean);
+    liveSnapshot(`(versions/${missing.join(' and ')} not found — running live snapshot diff)`);
     return;
   }
 
@@ -370,7 +392,7 @@ function diffPrd(prdDir, opts) {
   const changed = [...mapB.keys()].filter(id => {
     if (!mapA.has(id)) return false;
     const x = mapA.get(id), y = mapB.get(id);
-    return JSON.stringify(x) !== JSON.stringify(y);
+    return canonical(x) !== canonical(y);
   });
 
   log(`Diff v${baseline} -> v${target}`);

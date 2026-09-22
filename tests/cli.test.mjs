@@ -65,19 +65,21 @@ owner: tester@team
   });
 
   it('warns when depends_on does not resolve to a sibling', () => {
-    const dir = makePrd({
-      'meta.yaml': `id: PRD-9003
+    // The PRD lives in its own parent folder so the sibling scan sees only
+    // known neighbors, never unrelated fixtures from parallel test workers.
+    const parent = makePrd({
+      'dangling/meta.yaml': `id: PRD-9003
 title: Dangling
 status: draft
 owner: tester@team
 depends_on: [PRD-NOPE]
 `,
-      'requirements.yaml': VALID_REQS,
+      'dangling/requirements.yaml': VALID_REQS,
     });
-    const r = runPrdc(['validate', dir]);
+    const r = runPrdc(['validate', join(parent, 'dangling')]);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('depends_on "PRD-NOPE" does not resolve to any sibling PRD');
-    cleanup(dir);
+    cleanup(parent);
   });
 });
 

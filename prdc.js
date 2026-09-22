@@ -20,7 +20,15 @@ const ok = (...a) => console.log('\u2713', ...a);
 
 function readYaml(p) {
   if (!existsSync(p)) return null;
-  return yaml.load(readFileSync(p, 'utf8'));
+  let doc;
+  try {
+    doc = yaml.load(readFileSync(p, 'utf8'));
+  } catch (e) {
+    const where = e.mark ? ` at line ${e.mark.line + 1}, column ${e.mark.column + 1}` : '';
+    err(`YAML parse error in ${p}${where}: ${e.reason || e.message}`);
+    process.exit(1);
+  }
+  return doc;
 }
 function readText(p) {
   if (!existsSync(p)) return '';

@@ -1,6 +1,6 @@
 {
   "name": "prd-as-code",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "PRD-as-Code CLI: treat product specs like software",
   "type": "module",
   "bin": {
@@ -40,6 +40,7 @@
   "license": "MIT",
   "devDependencies": {
     "@cucumber/gherkin": "^42.0.1",
+    "playwright": "^1.63.0",
     "vitest": "^5.0.1"
   }
 }

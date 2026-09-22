@@ -9,10 +9,11 @@ export const PRDC = join(ROOT, 'prdc.js');
 export const SAMPLE = join(ROOT, 'sample');
 
 // Run the CLI as a subprocess, the way real users and CI invoke it.
-export function runPrdc(args, { cwd = ROOT } = {}) {
+export function runPrdc(args, { cwd = ROOT, env = {} } = {}) {
   const r = spawnSync(process.execPath, [PRDC, ...args], {
     cwd,
     encoding: 'utf8',
+    env: { ...process.env, ...env },
   });
   return {
     status: r.status,

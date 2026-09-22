@@ -165,7 +165,9 @@ describe('build', () => {
   });
 
   it('rejects unknown formats', () => {
-    const r = runPrdc(['build', 'pdf', checkout]);
+    // pdf used to be the unknown-format example; it became a real target in
+    // 0.2.0, so this stays a genuine unknown-format check.
+    const r = runPrdc(['build', 'docx', checkout]);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('unknown format');
   });

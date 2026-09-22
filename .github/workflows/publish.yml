@@ -16,6 +16,10 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      # Module only, no browsers: keeps the publish run fast; the pdf
+      # real-render test skips itself without a browser.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

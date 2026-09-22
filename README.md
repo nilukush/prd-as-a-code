@@ -33,11 +33,27 @@ prdc init [name]                  # scaffold a new PRD project
 prdc new <name>                   # create a PRD from the feature template
 prdc validate <dir>               # schema validation (errors block ship)
 prdc lint <dir>                   # prose quality (ambiguous words, passive voice)
-prdc build <html|markdown|gherkin> <dir>  # compile to a downstream artifact
+prdc build <html|markdown|gherkin|pdf> <dir>  # compile to a downstream artifact
 prdc snapshot <dir>               # freeze requirements.yaml as versions/vN.yaml
 prdc diff <dir> --baseline 1 --target 2   # semantic diff between versions
 prdc graph <root>                 # dependency graph across all PRDs
+prdc --version                    # print the installed version
 ```
+
+### PDF output (optional setup)
+
+`prdc build pdf <dir>` renders the PRD to a print-styled A4 PDF through
+headless Chromium. Chromium is big, so it is never pulled in by default: the
+base install stays lean and PDF support is opt-in.
+
+```bash
+npm i -g playwright && npx playwright install chromium   # once
+prdc build pdf prds/checkout-redesign --out ./out/checkout.pdf
+```
+
+Without playwright installed the command prints exactly these instructions
+and exits non-zero. Set `PRDC_PDF_ENGINE=none` to force that behavior
+(for diagnostics or locked-down environments).
 
 ## Try it on the sample PRD
 
@@ -116,7 +132,6 @@ vagueness.
 
 ## Roadmap
 
-- `prdc build pdf` - PDF export
 - `prdc build slides` - PPTX via PptxGenJS
 - `prdc build jira` - epics + stories from `requirements.yaml`
 - `prdc link <PRD-id> --to <JIRA-id>` - bidirectional traceability

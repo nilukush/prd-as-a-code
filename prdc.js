@@ -433,6 +433,136 @@ function buildMarkdown(prdDir, outPath) {
   return outPath;
 }
 
+// ---------- pdf ----------
+
+// PDF is the only build target that needs a browser (headless Chromium), so
+// Playwright stays an OPTIONAL install: `npm i -g prd-as-code` must stay lean
+// and $0. Users who want PDFs install the engine next to prdc and fetch the
+// browser once. PRDC_PDF_ENGINE=none forces the "not installed" message for
+// diagnostics and locked-down environments.
+async function resolvePdfEngine() {
+  if (process.env.PRDC_PDF_ENGINE === 'none') return null;
+  for (const name of ['playwright', 'playwright-core']) {
+    try {
+      const mod = await import(name);
+      if (mod.chromium) return { name, chromium: mod.chromium };
+    } catch {
+      // not installed; try the next candidate
+    }
+  }
+  return null;
+}
+
+const PDF_INSTALL_HINT = [
+  'pdf target needs playwright (optional install). Enable it with:',
+  '  npm i -g playwright && npx playwright install chromium',
+  '(or: npm i playwright inside your PRD project)',
+].join('\n');
+
+// Print-oriented document: same content as build html, light theme and A4
+// layout instead of the dark screen theme. The <title> becomes the PDF's
+// document title metadata.
+function printDocHtml(meta, reqs, metrics, spec) {
+  const specHtml = marked.parse(spec);
+
+  const reqsHtml = reqs.map(r => {
+    const story = storySentence(r, s => `<b>${escapeHtml(s)}</b>`);
+    return `
+    <section class="req">
+      <h3><span class="id">${escapeHtml(r.id)}</span> ${escapeHtml(r.i_want || r.title || r.id)}
+        <span class="prio">${escapeHtml(r.priority || '—')}</span></h3>
+      ${story ? `<p class="story">${story}</p>` : ''}
+      <ul>${(r.acceptance_criteria || []).map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>
+      ${r.traces_to ? `<p class="trace">traces: ${escapeHtml(r.traces_to.join(', '))}</p>` : ''}
+    </section>`;
+  }).join('');
+
+  const metricsHtml = metrics.map(m => `
+    <tr>
+      <td>${escapeHtml(m.name)}</td>
+      <td>${m.baseline ?? '—'}</td>
+      <td>${m.target ?? '—'}</td>
+      <td>${escapeHtml(m.window || '—')}</td>
+    </tr>`).join('');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(meta.title)} — ${escapeHtml(meta.id)}</title>
+<style>
+  body { font: 11pt/1.55 Georgia, 'Times New Roman', serif; color:#1a1a1a; margin:0; }
+  h1 { font-size:22pt; margin:0 0 6pt; }
+  h2 { font-size:13pt; margin:22pt 0 8pt; border-bottom:1.5pt solid #333;
+       padding-bottom:3pt; letter-spacing:0.04em; text-transform:uppercase; }
+  .meta { color:#555; font-size:9.5pt; margin-bottom:4pt; }
+  .req { margin:0 0 12pt; page-break-inside:avoid; }
+  .req h3 { font-size:11.5pt; margin:0 0 4pt; }
+  .req .id { font-family:Menlo, monospace; font-size:9pt; color:#5533aa; }
+  .req .prio { font-family:Menlo, monospace; font-size:8.5pt; color:#555;
+               border:0.5pt solid #999; border-radius:3pt; padding:0.5pt 3pt;
+               margin-left:4pt; vertical-align:middle; }
+  .req .story { color:#444; margin:0 0 4pt; }
+  .req ul { margin:0 0 4pt; padding-left:16pt; }
+  .req .trace { font-family:Menlo, monospace; font-size:8.5pt; color:#555; margin:2pt 0 0; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:4pt 8pt; border-bottom:0.5pt solid #bbb;
+           font-size:9.5pt; }
+  th { text-transform:uppercase; font-size:8.5pt; letter-spacing:0.05em; color:#555; }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(meta.title)}</h1>
+  <div class="meta">
+    <b>${escapeHtml(meta.id)}</b> · status: <b>${escapeHtml(meta.status)}</b> · owner: <b>${escapeHtml(meta.owner)}</b>
+    ${meta.target_release ? ` · target: <b>${escapeHtml(meta.target_release)}</b>` : ''}
+  </div>
+
+  <h2>Specification</h2>
+  ${specHtml}
+
+  <h2>Requirements (${reqs.length})</h2>
+  ${reqsHtml}
+
+  <h2>Success Metrics</h2>
+  <table><thead><tr>
+    <th>Metric</th><th>Baseline</th><th>Target</th><th>Window</th>
+  </tr></thead><tbody>${metricsHtml}</tbody></table>
+</body>
+</html>`;
+}
+
+async function buildPdf(prdDir, outPath) {
+  const engine = await resolvePdfEngine();
+  if (!engine) throw new Error(PDF_INSTALL_HINT);
+
+  const { meta, reqs, metrics, spec } = loadPrd(prdDir);
+  requireMeta(meta);
+
+  let browser;
+  try {
+    browser = await engine.chromium.launch();
+  } catch (e) {
+    const first = String(e.message || e).split('\n')[0];
+    throw new Error(
+      `pdf target could not launch chromium. Run: npx playwright install chromium\n(${first})`,
+    );
+  }
+  try {
+    const page = await browser.newPage();
+    await page.setContent(printDocHtml(meta, reqs, metrics, spec), { waitUntil: 'load' });
+    const buf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '18mm', bottom: '18mm', left: '14mm', right: '14mm' },
+    });
+    write(outPath, buf);
+  } finally {
+    await browser.close();
+  }
+  return outPath;
+}
+
 // ---------- snapshot ----------
 
 // Freeze the current requirements.yaml as the next numbered version file,
@@ -691,7 +821,7 @@ prdc — PRD-as-Code CLI
   prdc new <name> [--template T]  create a new PRD from template (feature)
   prdc validate <dir>             schema validation
   prdc lint <dir>                 prose quality (ambiguous words, passive voice)
-  prdc build <fmt> <dir> [--out]  compile to html | markdown | gherkin
+  prdc build <fmt> <dir> [--out]  compile to html | markdown | gherkin | pdf
   prdc snapshot <dir>             freeze requirements.yaml as versions/vN.yaml
   prdc diff <dir> [--baseline N --target N]   semantic diff between versions
   prdc graph <root>               dependency graph across all PRDs
@@ -766,21 +896,30 @@ switch (cmd) {
   case 'build': {
     const fmt = rest[0];
     const dir = rest[1] && !rest[1].startsWith('--') ? rest[1] : null;
-    if (!fmt || !dir) { err('usage: prdc build <html|markdown|gherkin> <dir> [--out path]'); process.exit(1); }
+    if (!fmt || !dir) { err('usage: prdc build <html|markdown|gherkin|pdf> <dir> [--out path]'); process.exit(1); }
     // A bare --out (no value) is rejected rather than silently building to
     // the default path, because the user clearly intended a specific output.
     const outIdx = rest.indexOf('--out');
     if (outIdx !== -1 && (!rest[outIdx + 1] || rest[outIdx + 1].startsWith('--'))) {
-      err('usage: prdc build <html|markdown|gherkin> <dir> [--out path]');
+      err('usage: prdc build <html|markdown|gherkin|pdf> <dir> [--out path]');
       process.exit(1);
     }
     const prdDir = resolve(dir);
-    const outExt = fmt === 'html' ? 'html' : fmt === 'gherkin' ? 'feature' : 'md';
+    const outExt = fmt === 'html' ? 'html' : fmt === 'gherkin' ? 'feature' : fmt === 'pdf' ? 'pdf' : 'md';
     const out = opt('out', join(prdDir, `build.${outExt}`));
     let p;
     if (fmt === 'html') p = buildHtml(prdDir, out);
     else if (fmt === 'markdown' || fmt === 'md') p = buildMarkdown(prdDir, out);
     else if (fmt === 'gherkin') p = buildGherkin(prdDir, out);
+    else if (fmt === 'pdf') {
+      // Async engine: report through the promise so the process stays alive
+      // until Chromium finishes, then exit explicitly.
+      buildPdf(prdDir, out).then(
+        outPath => { ok(`built pdf -> ${outPath}`); process.exit(0); },
+        e => { err(e.message); process.exit(1); },
+      );
+      break;
+    }
     else { err('unknown format:', fmt); process.exit(1); }
     ok(`built ${fmt} -> ${p}`);
     break;
@@ -809,8 +948,16 @@ switch (cmd) {
   case 'help':
     help();
     break;
+  case '--version':
+  case '-v':
+    log(version());
+    break;
   default:
     err('unknown command:', cmd);
     help();
     process.exit(1);
+}
+
+function version() {
+  return JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8')).version;
 }

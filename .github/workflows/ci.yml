@@ -13,6 +13,11 @@ jobs:
       # CLI-only smoke job below.
       matrix:
         node: [20, 22, 24]
+    env:
+      # Install the playwright module only; CI exercises the browser-missing
+      # guidance path. The real-render test detects the missing browser and
+      # skips itself. Browsers are not downloaded to keep CI fast.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

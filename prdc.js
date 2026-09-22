@@ -73,17 +73,19 @@ function validatePrd(prdDir) {
   if (meta.status === 'approved' && (!meta.approved_by || meta.approved_by.length < 1))
     errors.push('status=approved requires approved_by field (signed commit)');
 
-  // depends_on must resolve
-  if (meta.depends_on && Array.isArray(meta.depends_on)) {
-    for (const dep of meta.depends_on) {
-      // Look for sibling dirs whose meta.id matches
-      const parent = dirname(prdDir);
-      const siblings = existsSync(parent) ? readdirSync(parent) : [];
-      const found = siblings.some(s => {
+  // depends_on must resolve. One pass over the sibling directories builds
+  // the id index; scanning per dependency was O(PRDs x deps) file reads.
+  if (meta.depends_on && Array.isArray(meta.depends_on) && meta.depends_on.length) {
+    const parent = dirname(prdDir);
+    const siblingIds = new Set();
+    if (existsSync(parent)) {
+      for (const s of readdirSync(parent)) {
         const m = readYaml(join(parent, s, 'meta.yaml'));
-        return m && m.id === dep;
-      });
-      if (!found) warnings.push(`depends_on "${dep}" does not resolve to any sibling PRD`);
+        if (m && m.id) siblingIds.add(m.id);
+      }
+    }
+    for (const dep of meta.depends_on) {
+      if (!siblingIds.has(dep)) warnings.push(`depends_on "${dep}" does not resolve to any sibling PRD`);
     }
   }
 

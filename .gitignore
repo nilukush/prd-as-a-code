@@ -11,6 +11,7 @@ dist/
 .idea/
 .mimosa/
 .playwright-mcp/
+.zcodeignore
 .DS_Store
 
 # project records and research artifacts stay local (not published)

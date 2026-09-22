@@ -8,6 +8,7 @@ import { join, resolve, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { marked } from 'marked';
+import Ajv2020 from 'ajv/dist/2020.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,8 +42,93 @@ function write(p, content) {
 
 // ---------- schema validation ----------
 
-const VALID_STATUS = new Set(['draft', 'review', 'approved', 'shipped', 'archived']);
+// Structural rules live in schema/*.json (JSON Schema draft 2020-12) so
+// editors and other tools can consume the same contract the CLI enforces.
+// The translators below map Ajv errors onto the CLI's stable message
+// strings; warnings and cross-file rules (depends_on, duplicates, prose
+// quality) stay in code because schemas cannot express them.
+const SCHEMA_DIR = join(__dirname, 'schema');
+const META_SCHEMA = JSON.parse(readFileSync(join(SCHEMA_DIR, 'meta.schema.json'), 'utf8'));
+const REQS_SCHEMA = JSON.parse(readFileSync(join(SCHEMA_DIR, 'requirements.schema.json'), 'utf8'));
+const METRICS_SCHEMA = JSON.parse(readFileSync(join(SCHEMA_DIR, 'metrics.schema.json'), 'utf8'));
+
+const ajv = new Ajv2020({ allErrors: true });
+const validateMetaSchema = ajv.compile(META_SCHEMA);
+const validateReqsSchema = ajv.compile(REQS_SCHEMA);
+const validateMetricsSchema = ajv.compile(METRICS_SCHEMA);
+
+const STATUS_LIST = META_SCHEMA.properties.status.enum.join('|');
 const VALID_PRIORITY = new Set(['P0', 'P1', 'P2', 'P3']);
+
+function metaSchemaErrors(meta) {
+  if (validateMetaSchema(meta)) return [];
+  const out = [];
+  for (const e of validateMetaSchema.errors) {
+    if (e.keyword === 'required') {
+      const prop = e.params.missingProperty;
+      if (prop === 'id') out.push('meta.id is required (e.g. PRD-1042)');
+      else if (prop === 'title') out.push('meta.title is required');
+      else if (prop === 'owner') out.push('meta.owner is required');
+      else if (prop === 'status') out.push('meta.status is required');
+      else if (prop === 'reviewers') out.push('status=approved requires at least 1 reviewer signature');
+      else if (prop === 'approved_by') out.push('status=approved requires approved_by field (signed commit)');
+    } else if (e.keyword === 'enum' && e.instancePath === '/status') {
+      out.push(`meta.status "${meta.status}" not in ${STATUS_LIST}`);
+    } else if (e.keyword === 'minLength') {
+      const prop = e.instancePath.slice(1);
+      if (prop === 'id') out.push('meta.id is required (e.g. PRD-1042)');
+      else if (prop === 'title') out.push('meta.title is required');
+      else if (prop === 'owner') out.push('meta.owner is required');
+    } else if (e.keyword === 'minItems' || e.keyword === 'type') {
+      // Remaining type/minItems errors can only come from the approval-gate
+      // branches of the schema's allOf.
+      if (e.schemaPath.startsWith('#/allOf/0/')) out.push('status=approved requires at least 1 reviewer signature');
+      else if (e.schemaPath.startsWith('#/allOf/1/')) out.push('status=approved requires approved_by field (signed commit)');
+    }
+  }
+  return out;
+}
+
+function reqsSchemaErrors(reqs) {
+  if (validateReqsSchema(reqs)) return [];
+  const out = [];
+  for (const e of validateReqsSchema.errors) {
+    if (e.keyword === 'type' && e.instancePath === '') {
+      out.push('requirements.yaml must be a list of FR/NFR objects');
+      continue;
+    }
+    const idx = Number(e.instancePath.split('/')[1]);
+    const r = Array.isArray(reqs) ? reqs[idx] : undefined;
+    if (e.keyword === 'required' && e.params.missingProperty === 'id')
+      out.push('requirement missing id — every FR/NFR needs a stable id like FR-01');
+    else if (e.keyword === 'minLength' && e.instancePath.endsWith('/id'))
+      out.push('requirement missing id — every FR/NFR needs a stable id like FR-01');
+    else if (
+      (e.keyword === 'required' && e.params.missingProperty === 'acceptance_criteria') ||
+      e.keyword === 'minItems' ||
+      (e.keyword === 'type' && e.instancePath.endsWith('/acceptance_criteria'))
+    )
+      // Template on purpose: a missing id renders as "undefined:" exactly the
+      // way the historical message did.
+      out.push(`${r ? r.id : undefined}: every requirement needs >=1 acceptance criterion`);
+  }
+  return out;
+}
+
+function metricsSchemaErrors(metrics) {
+  if (validateMetricsSchema(metrics)) return [];
+  const out = [];
+  for (const e of validateMetricsSchema.errors) {
+    if (e.keyword === 'type' && e.instancePath === '')
+      out.push('metrics.yaml must be a list of metric objects');
+    else if (
+      (e.keyword === 'required' && e.params.missingProperty === 'name') ||
+      (e.keyword === 'minLength' && e.instancePath.endsWith('/name'))
+    )
+      out.push('metric missing name');
+  }
+  return out;
+}
 
 function validatePrd(prdDir) {
   const errors = [];
@@ -58,20 +144,8 @@ function validatePrd(prdDir) {
     return { errors, warnings, meta: null, reqs: null, metrics: null };
   }
 
-  // meta rules
-  if (!meta.id) errors.push('meta.id is required (e.g. PRD-1042)');
-  if (!meta.title) errors.push('meta.title is required');
-  if (!meta.owner) errors.push('meta.owner is required');
-  if (!meta.status) errors.push('meta.status is required');
-  else if (!VALID_STATUS.has(meta.status))
-    errors.push(`meta.status "${meta.status}" not in ${[...VALID_STATUS].join('|')}`);
-
-  // approval gate
-  if (meta.status === 'approved' && (!meta.reviewers || meta.reviewers.length < 1))
-    errors.push('status=approved requires at least 1 reviewer signature');
-
-  if (meta.status === 'approved' && (!meta.approved_by || meta.approved_by.length < 1))
-    errors.push('status=approved requires approved_by field (signed commit)');
+  // meta structural rules (required fields, status enum, approval gate)
+  errors.push(...metaSchemaErrors(meta));
 
   // depends_on must resolve. One pass over the sibling directories builds
   // the id index; scanning per dependency was O(PRDs x deps) file reads.
@@ -92,36 +166,36 @@ function validatePrd(prdDir) {
   // requirements rules
   if (!reqs) {
     errors.push('missing requirements.yaml');
-  } else if (!Array.isArray(reqs)) {
-    errors.push('requirements.yaml must be a list of FR/NFR objects');
   } else {
-    const ids = new Set();
-    for (const r of reqs) {
-      if (!r.id) errors.push(`requirement missing id — every FR/NFR needs a stable id like FR-01`);
-      else if (ids.has(r.id)) errors.push(`duplicate requirement id: ${r.id}`);
-      else ids.add(r.id);
+    errors.push(...reqsSchemaErrors(reqs));
+    // Cross-item and warning-level rules stay in code: a schema cannot see
+    // across array items (duplicate ids) and advisory checks belong to lint.
+    if (Array.isArray(reqs)) {
+      const ids = new Set();
+      for (const r of reqs) {
+        if (r.id) {
+          if (ids.has(r.id)) errors.push(`duplicate requirement id: ${r.id}`);
+          else ids.add(r.id);
 
-      if (r.id && !/^FR-|NFR-|EPI-/.test(r.id))
-        warnings.push(`${r.id}: id should start with FR- | NFR- | EPI-`);
+          if (!/^FR-|NFR-|EPI-/.test(r.id))
+            warnings.push(`${r.id}: id should start with FR- | NFR- | EPI-`);
+        }
 
-      if (!r.as_a || !r.i_want || !r.so_that)
-        warnings.push(`${r.id || '?'}: missing as_a/i_want/so_that (user story)`);
-      if (!r.acceptance_criteria || r.acceptance_criteria.length === 0)
-        errors.push(`${r.id}: every requirement needs >=1 acceptance criterion`);
-      if (r.priority && !VALID_PRIORITY.has(r.priority))
-        warnings.push(`${r.id}: priority "${r.priority}" not in ${[...VALID_PRIORITY].join('|')}`);
-      if (r.priority === 'P0' && (!r.rollback_plan))
-        warnings.push(`${r.id}: P0 requirements should declare a rollback_plan`);
+        if (!r.as_a || !r.i_want || !r.so_that)
+          warnings.push(`${r.id || '?'}: missing as_a/i_want/so_that (user story)`);
+        if (r.priority && !VALID_PRIORITY.has(r.priority))
+          warnings.push(`${r.id}: priority "${r.priority}" not in ${[...VALID_PRIORITY].join('|')}`);
+        if (r.priority === 'P0' && (!r.rollback_plan))
+          warnings.push(`${r.id}: P0 requirements should declare a rollback_plan`);
+      }
     }
   }
 
   // metrics rules
   if (metrics) {
-    if (!Array.isArray(metrics))
-      errors.push('metrics.yaml must be a list of metric objects');
-    else
+    errors.push(...metricsSchemaErrors(metrics));
+    if (Array.isArray(metrics))
       for (const m of metrics) {
-        if (!m.name) errors.push('metric missing name');
         if (!m.baseline && m.baseline !== 0) warnings.push(`${m.name || '?'}: missing baseline`);
         if (!m.target && m.target !== 0) warnings.push(`${m.name || '?'}: missing target`);
         if (!m.window) warnings.push(`${m.name || '?'}: missing measurement window (e.g. 30d)`);

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/nilukush/prd-as-a-code/main/schema/metrics.schema.json",
+  "title": "PRD metrics.yaml",
+  "description": "Success metrics for the PRD. Only the metric name is mandatory; baseline, target, and window are checked as warnings by the CLI because an intentionally unset metric is a drafting state, not a defect.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["name"],
+    "properties": {
+      "name": { "minLength": 1 },
+      "baseline": true,
+      "target": true,
+      "window": true,
+      "source": true
+    }
+  }
+}

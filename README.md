@@ -76,6 +76,12 @@ Example requirement:
 
 ## Schema rules enforced by `prdc validate`
 
+The structural rules ship as JSON Schema draft 2020-12 files in [`schema/`](schema/)
+(`meta.schema.json`, `requirements.schema.json`, `metrics.schema.json`), so editors
+and other tools can validate PRD files with the same contract the CLI enforces.
+Warning-level and cross-file rules (duplicate ids, `depends_on` resolution, prose
+quality) stay in the CLI.
+
 | Rule | Severity |
 |---|---|
 | `meta.id`, `meta.title`, `meta.owner`, `meta.status` all required | error |

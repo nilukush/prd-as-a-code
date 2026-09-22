@@ -1,17 +1,36 @@
 {
   "name": "prdc",
   "version": "0.1.0",
-  "description": "PRD-as-Code CLI — treat product specs like software",
+  "description": "PRD-as-Code CLI: treat product specs like software",
   "type": "module",
   "bin": {
     "prdc": "./prdc.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nilukush/prd-as-a-code.git"
+  },
+  "keywords": [
+    "prd",
+    "requirements",
+    "product-management",
+    "specification",
+    "cli",
+    "developer-tools",
+    "documentation"
+  ],
+  "files": [
+    "prdc.js",
+    "schema/",
+    "sample/"
+  ],
   "scripts": {
     "start": "node prdc.js",
     "test": "vitest run",
     "demo": "node prdc.js validate sample/checkout-redesign && node prdc.js lint sample/checkout-redesign && node prdc.js build html sample/checkout-redesign --out ./_demo-out/checkout.html && node prdc.js diff sample/checkout-redesign --baseline 1 --target 2 && node prdc.js graph sample/"
   },
   "dependencies": {
+    "ajv": "^8.20.0",
     "js-yaml": "^4.1.0",
     "marked": "^12.0.0"
   },

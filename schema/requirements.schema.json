@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/nilukush/prd-as-a-code/main/schema/requirements.schema.json",
+  "title": "PRD requirements.yaml",
+  "description": "The list of functional and non-functional requirements. Every requirement carries a stable id and at least one acceptance criterion; everything else (story fields, priority, traces) is advisory and handled by the linter as warnings.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "acceptance_criteria"],
+    "properties": {
+      "id": { "minLength": 1 },
+      "acceptance_criteria": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 1
+      },
+      "as_a": true,
+      "i_want": true,
+      "so_that": true,
+      "priority": true,
+      "rollback_plan": true,
+      "traces_to": true
+    }
+  }
+}
